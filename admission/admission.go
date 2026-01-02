@@ -36,12 +36,6 @@ func (a *Admitter) MutatePodReview() (*admissionv1.AdmissionReview, error) {
 	// Check if the Pod is managed by the CSI driver webhook
 	a.Logger.Info("checking if the Pod has the managed label")
 
-	// Check if the Pod has the managed label
-	// if pod.Labels[ManagedCSILabel] != "true" {
-	//	a.Logger.Info("Pod is not managed by the CSI driver", pod.Name, pod.Namespace)
-	//	return reviewResponse(a.Request.UID, true, http.StatusOK, "Pod is not managed by the CSI driver"), nil
-	//}
-
 	// Check if the Pod has the managed annotation
 	if pod.Annotations[ManagedCABIAnnotation] != "true" {
 		a.Logger.Info("Pod is not managed by the CA bundle injector", pod.Name, pod.Namespace)
