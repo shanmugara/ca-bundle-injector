@@ -10,6 +10,7 @@ const (
 	CaBundleCM     = "omega-bundle"
 	CaMountPath    = "/etc/ssl/certs/ca-certificates.crt"
 	CaSubPath      = "ca-certificates.crt"
+	CaBundleCmKey  = "root-certs.pem"
 	SSLCertEnvVar  = "SSL_CERT_FILE"
 )
 
@@ -88,8 +89,8 @@ func (ca *InjectCA) InjectCAVolume(mpod *corev1.Pod) error {
 				},
 				Items: []corev1.KeyToPath{
 					{
-						Key:  "root-certs.pem",
-						Path: "ca-certificates.crt",
+						Key:  CaBundleCmKey,
+						Path: CaSubPath,
 					},
 				},
 			},
@@ -174,27 +175,29 @@ func (ca InjectCA) InjectEnv(mpod *corev1.Pod) error {
 }
 
 func (ca InjectCA) CheckEnvVar(containers []corev1.Container) error {
+
+	sslEnvVar := corev1.EnvVar{
+		Name:  SSLCertEnvVar,
+		Value: CaMountPath,
+	}
+	envVarInjected := false
+
 	for i := range containers {
-		if containers[i].Env == nil {
-			containers[i].Env = []corev1.EnvVar{
-				{
-					Name:  SSLCertEnvVar,
-					Value: CaMountPath,
-				},
-			}
-		} else {
-			for j, envVar := range containers[i].Env {
-				if envVar.Name == SSLCertEnvVar {
-					if envVar.Value != CaMountPath {
-						containers[i].Env[j].Value = CaMountPath
-					}
-					break
+		for j, envVar := range containers[i].Env {
+			if envVar.Name == SSLCertEnvVar {
+				ca.Logger.Info("Env var already exists in container:", containers[i].Name)
+				if envVar.Value != CaMountPath {
+					ca.Logger.Info("Updating env var in container:", containers[i].Name)
+					containers[i].Env[j].Value = CaMountPath
 				}
+				envVarInjected = true
+				break
 			}
-			containers[i].Env = append(containers[i].Env, corev1.EnvVar{
-				Name:  SSLCertEnvVar,
-				Value: CaMountPath,
-			})
+		}
+		//Inject the env var
+		if !envVarInjected {
+			ca.Logger.Info("Appending env var to container:", containers[i].Name)
+			containers[i].Env = append(containers[i].Env, sslEnvVar)
 		}
 	}
 	return nil
