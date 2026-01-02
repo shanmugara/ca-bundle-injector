@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: swiss-knife-4
+  namespace: myapp
+  labels:
+    app: swiss4
+  annotations:
+    omegahome.net/managed-ca-bundle-injector: "true"
+spec:
+  containers:
+  - name: swiss-knife-4
+    image: praqma/network-multitool
+    command:
+    - /bin/sh
+    - -c
+    - "trap : TERM INT; sleep infinity & wait"
+    volumeMounts:
+    - name: ca-bundle-volume
+      mountPath: /etc/ssl/certs/ca-certificates.crt
+      subPath: ca-certificates.crt
+    env:
+    - name: SSL_CERT_FILE
+      value: /etc/ssl/certs/ca-certificates.crt
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  volumes:
+  - name: ca-bundle-volume
+    configMap:
+      name: omega-bundle
+      items:
+      - key: root-certs.pem
+        path: ca-certificates.crt
+
