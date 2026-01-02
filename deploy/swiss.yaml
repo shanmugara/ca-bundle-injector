@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: swiss-knife-3
+  namespace: myapp
+  labels:
+    app: swiss3
+  annotations:
+    omegahome.net/managed-ca-bundle-injector: "true"
+spec:
+  containers:
+  - name: swiss-knife-3
+    image: praqma/network-multitool
+    command:
+    - /bin/sh
+    - -c
+    - "trap : TERM INT; sleep infinity & wait"
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"

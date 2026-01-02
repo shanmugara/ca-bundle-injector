@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ca-bundle-injector-webhook.cert-manager.svc
+  namespace: cert-manager
+spec:
+  commonName: ca-bundle-injector-webhook.cert-manager.svc
+  dnsNames:
+  - "ca-bundle-injector-webhook.cert-manager.svc"
+  - "ca-bundle-injector-webhook.cert-manager.svc.cluster.local"
+  secretName: ca-bundle-injector-webhook.cert-manager.svc
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    group: cert-manager.io
+    kind: ClusterIssuer
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth

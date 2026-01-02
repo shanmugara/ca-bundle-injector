@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ca-bundle-injector
+  namespace: cert-manager
+  labels:
+    app: ca-bundle-injector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ca-bundle-injector
+  template:
+    metadata:
+      labels:
+        app: ca-bundle-injector
+    spec:
+      serviceAccountName: ca-bundle-injector-webhook
+      containers:
+      - name: "ca-bundle-injector"
+        image: "shanmugara/ca-bundle-injector:0.0.1"
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 8443
+          name: tls
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        env:
+        - name: SSL_CERT_FILE
+          value: /etc/ssl/certs/ca-certificates.crt
+        - name: TLS_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: ca-certificates
+          mountPath: /etc/ssl/certs/ca-certificates.crt
+          subPath: ca-certificates.crt
+          readOnly: true
+        - name: server-certs
+          mountPath: /etc/ssl/certs/srv/
+          readOnly: true
+      volumes:
+      - name: server-certs
+        secret:
+          secretName: ca-bundle-injector-webhook.cert-manager.svc
+      - name: ca-certificates
+        configMap:
+          name: omega-bundle
+          items:
+          - key: root-certs.pem
+            path: ca-certificates.crt
+      
