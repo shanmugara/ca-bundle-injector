@@ -1,21 +1,34 @@
 package mutation
 
 import (
+	"ca-bundle-injector/localtypes"
+	"fmt"
+	"sync"
+
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
 	CaBundleVolume = "ca-bundle-volume"
-	CaBundleCM     = "omega-bundle"
-	CaMountPath    = "/etc/ssl/certs/ca-certificates.crt"
-	CaSubPath      = "ca-certificates.crt"
-	CaBundleCmKey  = "root-certs.pem"
-	SSLCertEnvVar  = "SSL_CERT_FILE"
+	// CaBundleCM     = "omega-bundle"
+	CaMountPath   = "/etc/ssl/certs/ca-certificates.crt"
+	CaSubPath     = "ca-certificates.crt"
+	CaBundleCmKey = "root-certs.pem"
+	SSLCertEnvVar = "SSL_CERT_FILE"
+)
+
+var (
+	clientset     *kubernetes.Clientset
+	clientsetOnce sync.Once
+	clientsetErr  error
 )
 
 type InjectCA struct {
-	Logger logrus.FieldLogger
+	Logger   logrus.FieldLogger
+	BundleCm *localtypes.BundleConfigMapSpec
 }
 
 var _ PodMutator = &InjectCA{}
@@ -56,7 +69,7 @@ func (ca InjectCA) CheckPodVolume(pod *corev1.Pod) (bool, bool) {
 		}
 		ca.Logger.Info("Checking if volume is ConfigMap:", pod.Name)
 		if volume.ConfigMap != nil {
-			if volume.ConfigMap.Name == CaBundleCM {
+			if volume.ConfigMap.Name == ca.BundleCm.Name {
 				ca.Logger.Info("ConfigMap exists:", volume.Name)
 				ConfigMapExists = true
 			}
@@ -85,11 +98,11 @@ func (ca *InjectCA) InjectCAVolume(mpod *corev1.Pod) error {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: CaBundleCM,
+					Name: ca.BundleCm.Name,
 				},
 				Items: []corev1.KeyToPath{
 					{
-						Key:  CaBundleCmKey,
+						Key:  ca.BundleCm.Key,
 						Path: CaSubPath,
 					},
 				},
@@ -201,4 +214,20 @@ func (ca InjectCA) CheckEnvVar(containers []corev1.Container) error {
 		}
 	}
 	return nil
+}
+
+// getClientset returns a singleton Kubernetes clientset
+func getClientset() (*kubernetes.Clientset, error) {
+	clientsetOnce.Do(func() {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			clientsetErr = fmt.Errorf("failed to get in-cluster config: %w", err)
+			return
+		}
+		clientset, clientsetErr = kubernetes.NewForConfig(config)
+		if clientsetErr != nil {
+			clientsetErr = fmt.Errorf("failed to create Kubernetes clientset: %w", clientsetErr)
+		}
+	})
+	return clientset, clientsetErr
 }

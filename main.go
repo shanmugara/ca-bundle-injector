@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	"ca-bundle-injector/localtypes"
+
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 )
@@ -21,6 +23,13 @@ const (
 
 func main() {
 	setLogger()
+	// Load BundleConfigMapSpec from environment variables
+	if cmName, ok := os.LookupEnv("BUNDLE_CONFIGMAP_NAME"); !ok || cmName == "" {
+		logrus.Fatal("BUNDLE_CONFIGMAP_NAME environment variable is not set or empty")
+	}
+	if cmKey, ok := os.LookupEnv("BUNDLE_CONFIGMAP_KEY"); !ok || cmKey == "" {
+		logrus.Fatal("BUNDLE_CONFIGMAP_KEY environment variable is not set or empty")
+	}
 
 	// handle the default routes
 	http.HandleFunc("/mutate", ServeMutatePods)
@@ -57,7 +66,12 @@ func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
 	adm := admission.Admitter{
 		Logger:  logger,
 		Request: in.Request,
+		BundleCm: &localtypes.BundleConfigMapSpec{
+			Name: os.Getenv("BUNDLE_CONFIGMAP_NAME"),
+			Key:  os.Getenv("BUNDLE_CONFIGMAP_KEY"),
+		},
 	}
+
 	logger.Infof("validating generate request object")
 	out, err := adm.MutatePodReview()
 	if err != nil {

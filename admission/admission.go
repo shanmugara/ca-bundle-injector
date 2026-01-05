@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"ca-bundle-injector/localtypes"
+
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,8 +21,9 @@ const (
 )
 
 type Admitter struct {
-	Logger  *logrus.Entry
-	Request *admissionv1.AdmissionRequest
+	Logger   *logrus.Entry
+	Request  *admissionv1.AdmissionRequest
+	BundleCm *localtypes.BundleConfigMapSpec
 }
 
 func (a *Admitter) MutatePodReview() (*admissionv1.AdmissionReview, error) {
@@ -48,6 +51,8 @@ func (a *Admitter) MutatePodReview() (*admissionv1.AdmissionReview, error) {
 	//Create a new mutator
 	a.Logger.Info("creating a new mutator instance")
 	m := mutation.NewMutator(a.Logger)
+	// Pass the BundleConfigMapSpec to the mutator
+	m.BundleCm = a.BundleCm
 	a.Logger.Info("call mutatePodPatch..")
 	patch, err := m.MutatePodPatch(pod)
 	if err != nil {
