@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+  namespace: {{ .Release.Namespace }}
+spec:
+  commonName: {{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+  dnsNames:
+    - "{{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc"
+    - "{{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local"
+  secretName: {{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+  issuerRef:
+    name: {{ .Values.certificate.issuerName | default "selfsigned-cluster-issuer" }}
+    group: cert-manager.io
+    kind: ClusterIssuer
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth

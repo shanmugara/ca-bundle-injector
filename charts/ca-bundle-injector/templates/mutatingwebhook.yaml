@@ -1,0 +1,32 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "ca-bundle-injector.fullname" . }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "ca-bundle-injector.fullname" . }}-webhook.cert-manager.svc
+webhooks:
+  - name: {{ include "ca-bundle-injector.fullname" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local
+    clientConfig:
+      service:
+        name: {{ include "ca-bundle-injector.fullname" . }}-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /mutate
+        port: {{ .Values.webhook.port }}
+    rules:
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: "Namespaced"
+    namespaceSelector:
+      matchExpressions:
+        - key: "kubernetes.io/metadata.name"
+          operator: "NotIn"
+          values:
+            - "kube-system"
+            - "kube-public"
+            - "default"
+            - "cert-manager"
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 10
